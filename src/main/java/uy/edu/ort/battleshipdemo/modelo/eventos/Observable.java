@@ -1,17 +1,15 @@
 package uy.edu.ort.battleshipdemo.modelo.eventos;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public abstract class Observable {
-    private final List<Observador> observadores = new ArrayList<>();
+    private final CopyOnWriteArrayList<Observador> observadores = new CopyOnWriteArrayList<>();
     public void agregarObservador(Observador observador) {
-        if (!observadores.contains(observador)) observadores.add(observador);
+        observadores.addIfAbsent(observador);
     }
     public void quitarObservador(Observador observador) { observadores.remove(observador); }
     protected void notificar(Object evento) {
-        List<Observador> copia = new ArrayList<>(observadores);
-        for (Observador observador : copia) {
+        for (Observador observador : observadores) {
             try {
                 observador.actualizar(evento, this);
             } catch (Exception excepcion) {

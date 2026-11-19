@@ -41,6 +41,16 @@ export function iniciarVista(nombre, configuracion, manejadores) {
   Object.entries(manejadores).forEach(([comando, manejador]) => vista.handler(comando, manejador));
 
   const eventos = new EventSource("/sse/registrarSSE", { withCredentials: true });
+  let iniciada = false;
+  eventos.onopen = () => {
+    if (!iniciada) {
+      iniciada = true;
+      dispatcher.startView(vista);
+    } else if (configuracion.urlInicio) {
+      // Una reconexión recupera los cambios ocurridos mientras SSE estuvo cortado.
+      dispatcher.submit(configuracion.urlInicio, configuracion.dataInicio ?? {});
+    }
+  };
   eventos.onmessage = (evento) => {
     try {
       dispatcher.processCommands(JSON.parse(evento.data));
@@ -49,7 +59,6 @@ export function iniciarVista(nombre, configuracion, manejadores) {
     }
   };
   window.addEventListener("pagehide", () => eventos.close());
-  dispatcher.startView(vista);
   return vista;
 }
 

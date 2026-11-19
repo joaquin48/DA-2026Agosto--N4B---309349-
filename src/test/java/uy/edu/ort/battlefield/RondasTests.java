@@ -4,6 +4,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import uy.edu.ort.battleshipdemo.aplicacion.datos.BatallaDTO;
@@ -110,6 +116,39 @@ class RondasTests {
         assertEquals(1, eventos.size());
     }
 
+    @Test
+    void elPrimerDisparoRegistradoTienePrecedenciaEnLaRonda() throws Exception {
+        CountDownLatch primeroRegistrado = new CountDownLatch(1);
+        CountDownLatch completarPrimero = new CountDownLatch(1);
+        TipoBarco submarino = new TipoBarco("submarino", "Submarino", 2);
+        Partida partida = preparar(List.of(submarino),
+                new TacticaBloqueante(primeroRegistrado, completarPrimero));
+        Coordenada primerDestino = buscarAgua(partida.maquina(), partida.configuracion());
+        Coordenada segundoDestino = new Coordenada(5, 5);
+        long version = partida.batalla().getVersion();
+        ExecutorService ejecutor = Executors.newFixedThreadPool(2);
+        try {
+            Future<?> primero = ejecutor.submit(() ->
+                    partida.batalla().jugarRonda(primerDestino, 1, version));
+            assertTrue(primeroRegistrado.await(5, TimeUnit.SECONDS));
+            Future<?> segundo = ejecutor.submit(() ->
+                    partida.batalla().jugarRonda(segundoDestino, 1, version));
+            completarPrimero.countDown();
+
+            primero.get(5, TimeUnit.SECONDS);
+            ExecutionException error = assertThrows(ExecutionException.class,
+                    () -> segundo.get(5, TimeUnit.SECONDS));
+            assertInstanceOf(SolicitudDesactualizadaException.class, error.getCause());
+            assertTrue(partida.batalla().getMaquina().getOceano().celda(primerDestino).estaDisparada());
+            if (!primerDestino.equals(segundoDestino)) {
+                assertFalse(partida.batalla().getMaquina().getOceano().celda(segundoDestino).estaDisparada());
+            }
+        } finally {
+            completarPrimero.countDown();
+            ejecutor.shutdownNow();
+        }
+    }
+
     private Partida preparar(List<TipoBarco> tipos, Tactica tactica) {
         ConfiguracionBatalla configuracion = ConfiguracionBatalla.crear(6, 6,
                 tipos.stream().map(tipo -> new ItemFlota(tipo, 1)).toList());
@@ -178,5 +217,28 @@ class RondasTests {
         }
         public void registrarResultado(Disparo disparo) { }
         public Tactica copiar() { return new TacticaFija(destino, elecciones); }
+    }
+
+    private static class TacticaBloqueante extends Tactica {
+        private final CountDownLatch registrado;
+        private final CountDownLatch continuar;
+        TacticaBloqueante(CountDownLatch registrado, CountDownLatch continuar) {
+            super("Bloqueante");
+            this.registrado = registrado;
+            this.continuar = continuar;
+        }
+        public Coordenada elegirDisparo(ContextoTactico contexto) {
+            registrado.countDown();
+            try {
+                if (!continuar.await(5, TimeUnit.SECONDS))
+                    throw new IllegalStateException("El primer disparo no continuó");
+            } catch (InterruptedException excepcion) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("El primer disparo fue interrumpido", excepcion);
+            }
+            return new Coordenada(5, 5);
+        }
+        public void registrarResultado(Disparo disparo) { }
+        public Tactica copiar() { return new TacticaBloqueante(registrado, continuar); }
     }
 }
