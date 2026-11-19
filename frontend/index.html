@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="Batalla Naval: campaña, preparación de flota y combate por rondas.">
+  <title>Batalla Naval</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a id="go-to-room" class="brand" href="/" aria-label="Ir a la sala de Batalla Naval">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false">
+            <path d="M3 15h18l-2.4 4H5.4L3 15Zm5-3h8l2 2H6l2-2Zm2-7h4v6h-4V5Zm1-3h2v2h-2V2Z"/>
+          </svg>
+        </span>
+        <span>
+          <strong>Batalla Naval</strong>
+          <small>Centro de operaciones</small>
+        </span>
+      </a>
+      <div class="connection" aria-live="polite">
+        <span id="connection-dot" class="connection__dot"></span>
+        <span id="connection-text">Conectando</span>
+      </div>
+    </div>
+  </header>
+
+  <main id="app" class="shell" tabindex="-1">
+    <section class="loading-panel" aria-live="polite">
+      <span class="loading-panel__line"></span>
+      <p>Estableciendo enlace con la sala…</p>
+    </section>
+  </main>
+
+  <div id="toast-region" class="toast-region" aria-live="assertive" aria-atomic="true"></div>
+
+  <noscript>
+    <p class="noscript">Esta aplicación necesita JavaScript para comunicarse con el juego.</p>
+  </noscript>
+  <script>window.location.replace('/sala.html');</script>
+</body>
+</html>
